@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+
+  snipe-mysql:
+    container_name: snipe-mysql
+    image: mysql:5.6
+    #image: mysql:8.0
+    env_file:
+      - ./.env.docker-compose
+    volumes:
+      - snipesql-vol:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    expose:
+      - "3306"
+
+  snipe-it:
+    #image: snipe/snipe-it:develop
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ##  dockerfile: Dockerfile.alpine
+    env_file:
+      - ./.env.docker-compose
+    volumes:
+      - ./composer.json:/var/www/html/composer.json
+      - ./composer.lock:/var/www/html/composer.lock
+      - ./storage:/var/www/html/storage
+    ports:
+      - "3051:80"
+    depends_on:
+      - snipe-mysql
+
+  selenium:
+    image: selenium/standalone-chrome
+    ports:
+      - 4444:4444
+
+volumes:
+  snipesql-vol:
