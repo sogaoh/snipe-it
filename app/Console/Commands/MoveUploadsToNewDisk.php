@@ -20,7 +20,7 @@ class MoveUploadsToNewDisk extends Command
      *
      * @var string
      */
-    protected $description = 'This will move your uploaded files to whatever your current disk is.';
+    protected $description = 'This will move your locally uploaded files to whatever your current disk is.';
 
     /**
      * Create a new command instance.
@@ -42,7 +42,7 @@ class MoveUploadsToNewDisk extends Command
 
         if (config('filesystems.default')=='local') {
             $this->error('Your current disk is set to local so we cannot proceed.');
-            $this->warn("Please configure your .env settings for S3 or Rackspace, \nand change your FILESYSTEM_DISK value to 's3' or 'rackspace'.");
+            $this->warn("Please configure your .env settings for S3. \nChange your PUBLIC_FILESYSTEM_DISK value to 's3_public' and your PRIVATE_FILESYSTEM_DISK to s3_private.");
             return false;
         }
         $delete_local = $this->argument('delete_local');
@@ -50,7 +50,6 @@ class MoveUploadsToNewDisk extends Command
         $public_uploads['accessories'] = glob('storage/app/public/accessories'."/*.*");
         $public_uploads['assets'] = glob('storage/app/public/assets'."/*.*");
         $public_uploads['avatars'] = glob('storage/app/public/avatars'."/*.*");
-        $public_uploads['barcodes'] = glob('storage/app/public/barcodes'."/*.*");
         $public_uploads['categories'] = glob('storage/app/public/categories'."/*.*");
         $public_uploads['companies'] = glob('storage/app/public/companies'."/*.*");
         $public_uploads['components'] = glob('storage/app/public/components'."/*.*");
@@ -85,9 +84,9 @@ class MoveUploadsToNewDisk extends Command
 
         }
 
-        $logos = glob('public/uploads'."/logo*.*");
+        $logos = glob('public/uploads'."/setting*.*");
         $this->info("\nThere are ".count($logos).' files that might be logos.');
-        $type_count=0;
+        $type_count = 0;
 
         for ($l = 0; $l < count($logos); $l++) {
             $type_count++;
@@ -103,6 +102,7 @@ class MoveUploadsToNewDisk extends Command
         $private_uploads['imports'] = glob('storage/private_uploads/imports'."/*.*");
         $private_uploads['licenses'] = glob('storage/private_uploads/licenses'."/*.*");
         $private_uploads['users'] = glob('storage/private_uploads/users'."/*.*");
+        $private_uploads['backups'] = glob('storage/private_uploads/users'."/*.*");
 
 
         foreach($private_uploads as $private_type => $private_upload)

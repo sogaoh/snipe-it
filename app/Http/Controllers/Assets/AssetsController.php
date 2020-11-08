@@ -63,12 +63,8 @@ class AssetsController extends Controller
     public function index(Request $request)
     {
         $this->authorize('index', Asset::class);
-        if ($request->filled('company_id')) {
-            $company = Company::find($request->input('company_id'));
-        } else {
-            $company = null;
-        }
-        return view('hardware.index')->with('company', $company);
+        $company = Company::find($request->input('company_id'));
+        return view('hardware/index')->with('company', $company);
     }
 
     /**
@@ -110,6 +106,8 @@ class AssetsController extends Controller
         // This is only necessary on create, not update, since bulk editing is handled
         // differently
         $asset_tags = $request->input('asset_tags');
+
+        $settings = Setting::getSettings();
 
         $success = false;
         $serials = $request->input('serials');
@@ -190,7 +188,7 @@ class AssetsController extends Controller
                 }
 
                 if (isset($target)) {
-                    $asset->checkOut($target, Auth::user(), date('Y-m-d H:i:s'), '', 'Checked out on asset creation', e($request->get('name')), $location);
+                    $asset->checkOut($target, Auth::user(), date('Y-m-d H:i:s'), $request->input('expected_checkin', null), 'Checked out on asset creation', e($request->get('name')), $location);
                 }
 
                 $success = true;
@@ -299,6 +297,7 @@ class AssetsController extends Controller
         $asset->purchase_cost = Helper::ParseFloat($request->input('purchase_cost', null));
         $asset->purchase_date = $request->input('purchase_date', null);
         $asset->supplier_id = $request->input('supplier_id', null);
+        $asset->expected_checkin = $request->input('expected_checkin', null);
 
         // If the box isn't checked, it's not in the request at all.
         $asset->requestable = $request->filled('requestable');
@@ -566,7 +565,7 @@ class AssetsController extends Controller
         if (!ini_get("auto_detect_line_endings")) {
             ini_set("auto_detect_line_endings", '1');
         }
-        $csv = Reader::createFromPath(Input::file('user_import_csv'));
+        $csv = Reader::createFromPath($request->file('user_import_csv'));
         $csv->setHeaderOffset(0);
         $results = $csv->getRecords();
         $item = array();

@@ -52,22 +52,35 @@ class LdapAd extends LdapAdConfiguration
      *
      * @since 5.0.0
      *
-     * @return bool
+     * @return void
      */
-    public function init() : bool
+    public function init()
     {
         // Already initialized
-        if($this->ldap) {
+        if ($this->ldap) {
             return true;
         }
 
         parent::init();
         if($this->isLdapEnabled()) {
+            if($this->ldapSettings['is_ad'] == 0 ) { //only for NON-AD setups!
+                $this->ldapConfig['account_prefix'] = $this->ldapSettings['ldap_auth_filter_query'];
+                $this->ldapConfig['account_suffix'] = ','.$this->ldapConfig['base_dn'];
+            } /*
+            To the point mentioned in ldapLogin(), we might want to add an 'else' clause here that
+            sets up an 'account_suffix' of '@'.$this->ldapSettings['ad_domain'] *IF* the user has
+            $this->ldapSettings['ad_append_domain'] enabled.
+            That code in ldapLogin gets simplified, in exchange for putting all the weirdness here only.
+            */
             $this->ldap = new Adldap();
             $this->ldap->addProvider($this->ldapConfig);
             return true;
         }
         return false;
+    }
+
+    public function __construct() {
+        $this->init();
     }
 
         /**
@@ -86,16 +99,15 @@ class LdapAd extends LdapAdConfiguration
      */
     public function ldapLogin(string $username, string $password): User
     {
-        if ($this->ldapSettings['ad_append_domain']) {
-            $username .= '@' . $this->ldapSettings['ad_domain'];
+        if ($this->ldapSettings['ad_append_domain']) { //if you're using 'userprincipalname', don't check the ad_append_domain checkbox
+            $login_username = $username . '@' . $this->ldapSettings['ad_domain']; // I feel like could can be solved with the 'suffix' feature? Then this would be easier.
+        } else {
+            $login_username = $username;
         }
 
-        try {
-            $this->ldap->auth()->attempt($username, $password);
-        } catch (Exception $e) {
-            Log::error($e->getMessage());
+        if ($this->ldap->auth()->attempt($login_username, $password, true) === false) {
             throw new Exception('Unable to validate user credentials!');
-        }
+        }    
 
         // Should we sync the logged in user
         Log::debug('Attempting to find user in LDAP directory');
@@ -225,8 +237,17 @@ class LdapAd extends LdapAdConfiguration
      */
     private function isLdapSync(AdldapUser $user): bool
     {
-        return (false == $this->ldapSettings['ldap_active_flag'])
-            || ('true' == strtolower($user->{$this->ldapSettings['ldap_active_flag']}[0]));
+        if ( !$this->ldapSettings['ldap_active_flag']) {
+            return true; // always sync if you didn't define an 'active' flag
+        }
+       
+        if ( $user->{$this->ldapSettings['ldap_active_flag']} &&                           // if your LDAP user has the aforementioned flag as an attribute *AND* 
+             count($user->{$this->ldapSettings['ldap_active_flag']}) == 1 &&               // if that attribute has exactly one value *AND* 
+             strtolower($user->{$this->ldapSettings['ldap_active_flag']}[0]) == 'false') { // that value is the string 'false' (regardless of case), 
+            return false;                                                                  // then your user is *INACTIVE* - return false
+        }
+        // otherwise, return true
+        return true;
     }
 
     /**
@@ -283,13 +304,15 @@ class LdapAd extends LdapAdConfiguration
         // Check to see if the user is in a mapped location
         if ($mappedLocations) {
             $location = $mappedLocations->filter(function ($value, $key) use ($user) {
-                if ($user->inOu($value)) {
-                    return $key;
+                //if ($user->inOu($value)) { // <----- *THIS* seems not to be working, and it seems more 'intelligent' - but it's literally just a strpos() call, and it doesn't work quite right against plain strings
+                $user_ou = substr($user->getDn(), -strlen($value)); // get the LAST chars of the user's DN, the count of those chars being the length of the thing we're checking against
+                if(strcasecmp($user_ou, $value) === 0) { // case *IN*sensitive comparision - some people say OU=blah, some say ou=blah. returns 0 when strings are identical (which is a little odd, yeah)
+                    return $key; // WARNING: we are doing a 'filter' - not a regular for-loop. So the answer(s) get "return"ed into the $location array
                 }
             });
 
             if ($location->count() > 0) {
-                $locationId = $location->keys()->first();
+                $locationId = $location->keys()->first(); // from the returned $location array from the ->filter() method above, we return the first match - there should be only one
             }
         }
 
@@ -376,7 +399,7 @@ class LdapAd extends LdapAdConfiguration
     public function testLdapAdBindConnection(): void
     {
         try {
-            $this->ldap->search()->ous()->get()->count();
+            $this->ldap->search()->ous()->get()->count(); //it's saying this is null?
         } catch (Exception $th) {
             Log::error($th->getMessage());
             throw new Exception('Unable to search LDAP directory!');
@@ -393,7 +416,7 @@ class LdapAd extends LdapAdConfiguration
     public function testLdapAdUserConnection(): void
     {
         try {
-            $this->ldap->connect();
+            $this->ldap->connect(); //uh, this doesn't seem to exist :/
         } catch (\Adldap\Auth\BindException $e) {
             Log::error($e);
             throw new Exception('Unable to connect to LDAP directory!');
@@ -438,7 +461,7 @@ class LdapAd extends LdapAdConfiguration
      */
     public function getLdapUsers(): Paginator
     {
-        $search = $this->ldap->search()->users()->in($this->getBaseDn());
+        $search = $this->ldap->search()->users()->in($this->getBaseDn()); //this looks wrong; we should instead have a passable parameter that does this, and use this as a 'sane' default, yeah?
 
         $filter = $this->getFilter();
         if (!is_null($filter)) {

@@ -126,7 +126,9 @@ class UsersController extends Controller
         }
         $user->permissions =  json_encode($permissions_array);
 
-        app('App\Http\Requests\ImageUploadRequest')->handleImages($user, '', 'avatar', 'avatars');
+
+        // we have to invoke the
+        app('App\Http\Requests\ImageUploadRequest')->handleImages($user, 600, 'image', 'avatars', 'avatar');
 
         if ($user->save()) {
             if ($request->filled('groups')) {
@@ -204,8 +206,9 @@ class UsersController extends Controller
      * @return \Illuminate\Http\RedirectResponse
      * @throws \Illuminate\Auth\Access\AuthorizationException
      */
-    public function update(Request $request, $id = null)
+    public function update(SaveUserRequest $request, $id = null)
     {
+
         // We need to reverse the UI specific logic for our
         // permissions here before we update the user.
         $permissions = $request->input('permissions', array());
@@ -221,25 +224,20 @@ class UsersController extends Controller
 
         try {
             $user = User::findOrFail($id);
-            app('App\Http\Requests\SaveUserRequest');
-
-            if ($user->id == $request->input('manager_id')) {
-                return redirect()->back()->withInput()->with('error', 'You cannot be your own manager.');
-            }
-            $this->authorize('update', $user);
-            // Figure out of this user was an admin before this edit
-            $orig_permissions_array = $user->decodePermissions();
-            $orig_superuser = '0';
-            if (is_array($orig_permissions_array)) {
-                if (array_key_exists('superuser', $orig_permissions_array)) {
-                    $orig_superuser = $orig_permissions_array['superuser'];
-                }
-            }
         } catch (ModelNotFoundException $e) {
             return redirect()->route('users.index')
                 ->with('error', trans('admin/users/message.user_not_found', compact('id')));
         }
 
+        $this->authorize('update', $user);
+        // Figure out of this user was an admin before this edit
+        $orig_permissions_array = $user->decodePermissions();
+        $orig_superuser = '0';
+        if (is_array($orig_permissions_array)) {
+            if (array_key_exists('superuser', $orig_permissions_array)) {
+                $orig_superuser = $orig_permissions_array['superuser'];
+            }
+        }
 
         // Only save groups if the user is a super user
         if (Auth::user()->isSuperUser()) {
@@ -247,13 +245,11 @@ class UsersController extends Controller
         }
 
 
+        // Update the user
         if ($request->filled('username')) {
             $user->username = $request->input('username');
         }
         $user->email = $request->input('email');
-
-
-        // Update the user
         $user->first_name = $request->input('first_name');
         $user->last_name = $request->input('last_name');
         $user->two_factor_optin = $request->input('two_factor_optin') ?: 0;
@@ -295,8 +291,11 @@ class UsersController extends Controller
 
         $user->permissions =  json_encode($permissions_array);
 
-        app('App\Http\Requests\ImageUploadRequest')->handleImages($user, '', 'avatar', 'avatars');
+        // Handle uploaded avatar
+        app('App\Http\Requests\ImageUploadRequest')->handleImages($user, 600, 'avatar', 'avatars', 'avatar');
 
+
+        //\Log::debug(print_r($user, true));
 
         // Was the user updated?
         if ($user->save()) {
@@ -382,7 +381,7 @@ class UsersController extends Controller
     {
         $this->authorize('update', User::class);
         // Get user information
-        if (!$user = User::onlyTrashed()->find($id)) {
+        if (!User::onlyTrashed()->find($id)) {
             return redirect()->route('users.index')->with('error', trans('admin/users/messages.user_not_found'));
         }
 
