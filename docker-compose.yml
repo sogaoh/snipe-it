@@ -18,14 +18,14 @@ services:
     #image: snipe/snipe-it:develop
     build:
       context: ./
-      dockerfile: Dockerfile
-    ##  dockerfile: Dockerfile.alpine
+      dockerfile: Dockerfile.dusk
     env_file:
       - ./.env.docker-compose
     volumes:
       - ./composer.json:/var/www/html/composer.json
       - ./composer.lock:/var/www/html/composer.lock
       - ./storage:/var/www/html/storage
+      - ./tests/Browser/screenshots:/var/www/html/tests/Browser/screenshots
     ports:
       - "3051:80"
     depends_on:
@@ -34,7 +34,7 @@ services:
   selenium:
     image: selenium/standalone-chrome
     ports:
-      - 4444:4444
+      - "4444:4444"
 
 volumes:
   snipesql-vol:

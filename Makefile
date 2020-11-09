@@ -33,6 +33,11 @@ snipe:
 # in container
 
 vendor: composer.json composer.lock
+		composer self-update
+		composer validate
+		composer install
+
+vendor2: composer.json composer.lock
 		composer self-update --2
 		composer validate
 		composer install
@@ -53,3 +58,4 @@ opt: clear
 		#php artisan optimize
 
 clr: opt dump
+
