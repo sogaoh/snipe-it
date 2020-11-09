@@ -59,3 +59,13 @@ opt: clear
 
 clr: opt dump
 
+
+init: vendor
+		php artisan migrate --force
+		php artisan migrate --path='vendor/laravel/passport/database/migrations' --force
+		php artisan passport:install
+		php artisan db:seed
+		php artisan db:seed --class=AdjustFirstAdminUserSeeder
+
+e2e:
+		php artisan dusk
