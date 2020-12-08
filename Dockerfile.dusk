@@ -107,6 +107,30 @@ USER docker
 RUN composer install --working-dir=/var/www/html
 USER root
 
+
+###########################################################################
+# chrome dependencies:
+###########################################################################
+
+RUN \
+    apt update \
+    && apt-get install -y libxpm4 libxrender1 libgtk2.0-0 libnss3 libgconf-2-4 \
+    && apt-get install -y xvfb gtk2-engines-pixbuf \
+    && apt-get install -y xfonts-cyrillic xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable \
+    && apt-get install -y imagemagick x11-apps;
+
+###########################################################################
+# CHROME_DRIVER
+###########################################################################
+
+RUN \
+    apt update && apt-get install --no-install-recommends -y wget \
+    && apt-get install -my wget gnupg \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    && apt update && apt-get install -y google-chrome-stable;
+
+
 ############### APPLICATION INSTALL/INIT #################
 
 #RUN php artisan app:install
