@@ -22,7 +22,7 @@ class EditProfileTest extends DuskTestCase
             $editProfileXpath =
                 '/html/body/div[1]/header/nav/div[2]/ul/li[9]/ul/li[4]/a';
             $languageXpath =
-                '/html/body/div[1]/div/section[2]/div[2]/div/div/form/div/div[1]/div[4]/div/span/span[1]/span/span[1]';
+                '/html/body/div[1]/div/section[2]/div[2]/div/div/form/div/div[1]/div[4]/div/span/span[1]/span';
             $japaneseXpath =
                 '/html/body/span/span/span[2]/ul/li[26]';
             $englishUsXpath =
